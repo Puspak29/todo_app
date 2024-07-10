@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { TodoForm, TodoItem } from "./components";
 import { TodoProvider } from "./contexts";
-import { jsx } from "react/jsx-runtime";
 
 function App() {
   const [todos, setTodos] = useState([]);
@@ -11,7 +10,8 @@ function App() {
   }
 
   const updateTodo=(id,todo)=>{
-    setTodos((prev)=>prev.map((prevTodo)=>{prevTodo.id===id ? todo : prevTodo}))
+    setTodos((prev)=>
+      prev.map((prevTodo)=>(prevTodo.id===id ? todo : prevTodo)))
   }
 
   const deleteTodo=(id)=>{
@@ -19,7 +19,9 @@ function App() {
   }
 
   const toggleComplete=(id)=>{
-    setTodos((prev)=> prev.map((prevTodo)=> prevTodo.id===id ? {...prevTodo, completed: !prevTodo.completed} : prevTodo))
+    setTodos((prev)=> 
+      prev.map((prevTodo)=> 
+        (prevTodo.id===id ? {...prevTodo, completed: !prevTodo.completed} : prevTodo)))
   }
 
   useEffect(()=>{
@@ -41,8 +43,12 @@ function App() {
           <h1 className="text-white text-2xl font-bold text-center mb-8 mt-2">Manage Todos</h1>
           <TodoForm />
         </div>
-        <div className="w-3/5">
-          <TodoItem />
+        <div className=" w-3/5 flex flex-wrap gap-y-3">
+          {todos.map((todo)=>(
+            <div key={todo.id} className="w-full">
+              <TodoItem todo={todo}/>
+            </div>
+          ))}
         </div>
       </div>
     </TodoProvider>
