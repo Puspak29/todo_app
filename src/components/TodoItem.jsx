@@ -23,6 +23,7 @@ function TodoItem({todo}) {
       className="cursor-pointer" 
       checked={todo.completed} 
       onChange={toggleCompleted} 
+      disabled={todoEditable}
       />
       <input 
       type="text" 
