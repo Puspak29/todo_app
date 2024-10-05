@@ -3,13 +3,15 @@ import { firebaseAuth } from "../Firebase/FirebaseConfig";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged} from "firebase/auth"
 
 export const authContext = createContext({
-    currentUser : null,
+    user : null,
     signup : (email,password)=>{},
     signin : (email,password)=>{},
     signout : ()=>{}
 });
 
-export const authProvider = ()=>{
+export const useAuth = ()=>{
     return useContext(authContext);
 };
+
+export const authProvider=authContext.Provider
 
