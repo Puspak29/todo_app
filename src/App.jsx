@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { TodoForm, TodoItem, PopUp } from "./components";
-import { TodoProvider, authProvider } from "./contexts";
+import { TodoForm, TodoItem, PopUp, Navbar } from "./components";
+import { TodoProvider, AuthProvider } from "./contexts";
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "./Firebase/FirebaseConfig";
 import { NavLink } from "react-router-dom";
-import { getAuth, onAuthStateChanged } from "firebase/auth"
+import { getAuth, onAuthStateChanged, signOut} from "firebase/auth"
 
 function App() {
+  const isClose = true;
   const [openPopup, setOpenPopup] = useState(false);
   const HandleRemovePopUp = () => setOpenPopup(false);
   
@@ -14,6 +15,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+  const auth = getAuth();
   useEffect(()=>{
     const auth=getAuth();
     const unsubscribe= onAuthStateChanged(auth,(user)=>{
@@ -46,8 +48,9 @@ function App() {
       prev.map((prevTodo)=>(prevTodo.id===id ? todo : prevTodo)))
   }
 
-  const deleteTodo=(id)=>{
+  const deleteTodo=/*async*/(id)=>{
     setTodos((prev)=> prev.filter((todo)=> todo.id !== id))
+    // await deleteDoc(doc(db, "todos", id));
   }
 
   const toggleComplete=(id)=>{
@@ -65,22 +68,26 @@ function App() {
   },[])
 
   useEffect(/*async*/()=>{
-    localStorage.setItem("todo", JSON.stringify(todos));
+    
     // await addDoc(collection(db, "todos"), todos);
-    (async ()=>{
-      addDoc(collection(db, "todos"), todos);
-    })();
+    user?(async ()=>{
+      if(todos.length)
+        addDoc(collection(db, user.email), todos[0]);
+    })(): localStorage.setItem("todo", JSON.stringify(todos));
   },[todos])
 
   return (
     <TodoProvider value={{todos, addTodo, updateTodo, deleteTodo, toggleComplete}}>
-      <authProvider value={{user}}>
-      <div className="bg-gray-800 min-h-screen py-8 align-top">
-        <div className="flex justify-end px-5 gap-2">
+      <AuthProvider value={{user}}>
+      <div className="bg-gray-800 min-w-full min-h-screen pb-8 align-top">
+        {/* <Navbar user={user} /> */}
+        <div className="flex flex-row justify-end min-w-full">
+        {user? <p className="text-white text-center text-lg py-2">Welcome {user.email}</p> : null}
+        <div className="flex py-2 px-5 gap-2">
           { (!isOnline || !user) ?
             (<>
             {/* <NavLink to="/todo_app/login"> */}
-            <button onClick={() => setOpenPopup(true)} className="text-white bg-blue-800 border-black rounded-lg px-3 py-1 hover:bg-blue-900">SignIn/SignUp</button>
+            <button onClick={() => !isClose?setOpenPopup(true): alert("underworking")} className="text-white bg-blue-800 border-black rounded-lg px-3 py-1 hover:bg-blue-900">SignIn/SignUp</button>
             <div>
               <PopUp openPopUp={openPopup} closePopUp={HandleRemovePopUp} />
             </div>
@@ -88,8 +95,19 @@ function App() {
             {/* <NavLink to="/todo_app/signup"><button className="text-white bg-blue-800 border-black rounded-lg px-3 py-1 hover:bg-blue-900">SignUp</button></NavLink> */}
             </>) :
 
-            (<button className="text-white bg-blue-800 border-black rounded-lg px-3 py-1 hover:bg-blue-900">SignOut</button>)
+            (<button className="text-white bg-blue-800 border-black rounded-lg px-3 py-1 hover:bg-blue-900"
+              onClick={() => {
+                signOut(auth).then(() => {
+                  // Sign-out successful.
+                  console.log("Sign-out successful.");
+                }).catch((error) => {
+                  // An error happened.
+                  console.log("An error happened.", error);
+                });
+              }}
+            >SignOut</button>)
           }
+        </div>
         </div>
         <div className="flex flex-col items-center">
           <div className="mb-4 w-4/5 md:w-9/12 lg:w-3/5">
@@ -105,7 +123,7 @@ function App() {
           </div>
         </div>
       </div>
-      </authProvider>
+      </AuthProvider>
     </TodoProvider>
   );
 }

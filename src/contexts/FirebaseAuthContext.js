@@ -13,5 +13,5 @@ export const useAuth = ()=>{
     return useContext(authContext);
 };
 
-export const authProvider=authContext.Provider
+export const AuthProvider=authContext.Provider
 
