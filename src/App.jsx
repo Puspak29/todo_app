@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
 import { TodoForm, TodoItem, PopUp, Navbar } from "./components";
 import { TodoProvider, AuthProvider } from "./contexts";
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, query, getDocs, addDoc, deleteDoc, doc, updateDoc, orderBy, limit } from "firebase/firestore";
 import { db } from "./Firebase/FirebaseConfig";
 import { NavLink } from "react-router-dom";
 import { getAuth, onAuthStateChanged, signOut} from "firebase/auth"
 
 function App() {
-  const isClose = true;
+  const isClose = false;
   const [openPopup, setOpenPopup] = useState(false);
   const HandleRemovePopUp = () => setOpenPopup(false);
   
   const [todos, setTodos] = useState([]);
   const [user, setUser] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  // const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [latestTodo, setLatestTodo] = useState({});
+  const [latestTodoId, setLatestTodoId] = useState(null);
 
   const auth = getAuth();
   useEffect(()=>{
@@ -39,42 +43,205 @@ function App() {
     };
   }, []);
 
+  useEffect(()=>{
+    if(!isOnline) setUser(null);
+  },[isOnline])
+
   const addTodo=(todo)=>{
-    setTodos((prev)=> [{id: Date.now(), ...todo},...prev])
+    const newTodo = {id: Date.now(), ...todo}
+    setLatestTodo(newTodo);
+    console.log("addTodo called");
+    setTodos((prev)=> [newTodo,...prev])
   }
 
-  const updateTodo=(id,todo)=>{
-    setTodos((prev)=>
-      prev.map((prevTodo)=>(prevTodo.id===id ? todo : prevTodo)))
+  const updateTodo=async(id,todo)=>{
+    if(user && isOnline){
+      try {
+        const querySnapshot = await getDocs(collection(db, user.email));
+
+        querySnapshot.forEach(async (docSnapshot) => {
+        const docData = docSnapshot.data();
+
+        if (docData.id === id) { 
+          console.log(`Found document with ID: ${docSnapshot.id}`);
+          console.log("Document data:", docData);
+          const todoRef = doc(db, user.email, docSnapshot.id);
+
+          await updateDoc(todoRef, { ...todo });
+          console.log(`Todo updated successfully from Firestore.`);
+        }
+      });
+      (async ()=>{
+        try {
+          const q = query(collection(db, user.email), orderBy("id", "desc"));
+          const querySnapshot = await getDocs(q);
+          const dataList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setTodos(dataList);
+          if(dataList.length>0) setLatestTodoId(dataList[0].id);
+          console.log(dataList)
+        } 
+        catch (error) {
+          console.error("Error fetching data: ", error);
+        }
+      })();
+       
+      } catch (error) {
+        console.error("Error updating todo from Firestore: ", error);
+      }
+    }
+    else{
+      setTodos((prev)=>
+        prev.map((prevTodo)=>(prevTodo.id===id ? todo : prevTodo)))
+    }
   }
 
-  const deleteTodo=/*async*/(id)=>{
-    setTodos((prev)=> prev.filter((todo)=> todo.id !== id))
-    // await deleteDoc(doc(db, "todos", id));
+  const deleteTodo=async(id)=>{
+
+    // setIsDeleting(true);
+    if (user && isOnline) {
+      try {
+        const querySnapshot = await getDocs(collection(db, user.email));
+
+        querySnapshot.forEach(async (docSnapshot) => {
+        const docData = docSnapshot.data();
+
+          if (docData.id === id) { 
+            console.log(`Found document with ID: ${docSnapshot.id}`);
+            console.log("Document data:", docData);
+            const todoRef = doc(db, user.email, docSnapshot.id);
+
+            await deleteDoc(todoRef);
+            console.log(`Todo deleted successfully from Firestore.`);
+          }
+        });
+        (async ()=>{
+          try {
+            const q = query(collection(db, user.email), orderBy("id", "desc"));
+            const querySnapshot = await getDocs(q);
+            const dataList = querySnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setTodos(dataList);
+            if(dataList.length>0) setLatestTodoId(dataList[0].id);
+            console.log(dataList)
+          } 
+          catch (error) {
+            console.error("Error fetching data: ", error);
+          }
+        })();
+       
+      } catch (error) {
+        console.error("Error deleting todo from Firestore: ", error);
+      }
+    }
+    else{
+      setTodos((prev)=> prev.filter((todo)=> todo.id !== id));
+    }
   }
 
-  const toggleComplete=(id)=>{
-    setTodos((prev)=> 
-      prev.map((prevTodo)=> 
-        (prevTodo.id===id ? {...prevTodo, completed: !prevTodo.completed} : prevTodo)))
+  const toggleComplete=async(id)=>{
+    if(user && isOnline){
+      try {
+        const querySnapshot = await getDocs(collection(db, user.email));
+
+        querySnapshot.forEach(async (docSnapshot) => {
+        const docData = docSnapshot.data();
+
+        if (docData.id === id) { 
+          console.log(`Found document with ID: ${docSnapshot.id}`);
+          console.log("Document data:", docData);
+          const todoRef = doc(db, user.email, docSnapshot.id);
+
+          await updateDoc(todoRef, { completed: !docData.completed });
+          console.log(`Todo marked successfully from Firestore.`);
+        }
+      });
+
+      (async ()=>{
+        try {
+          const q = query(collection(db, user.email), orderBy("id", "desc"));
+          const querySnapshot = await getDocs(q);
+          const dataList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setTodos(dataList);
+          if(dataList.length>0) setLatestTodoId(dataList[0].id);
+          console.log(dataList)
+        } 
+        catch (error) {
+          console.error("Error fetching data: ", error);
+        }
+      })();
+       
+      } catch (error) {
+        console.error("Error marking todo from Firestore: ", error);
+      }
+    }
+    else{
+      setTodos((prev)=> 
+        prev.map((prevTodo)=> 
+          (prevTodo.id===id ? {...prevTodo, completed: !prevTodo.completed} : prevTodo)))
+    }
   }
 
   useEffect(()=>{
-    const todos= JSON.parse(localStorage.getItem("todo"))
-
-    if(todos && todos.length>0){
-      setTodos(todos)
+    if(user && isOnline){
+      (async ()=>{
+        try {
+          const q = query(collection(db, user.email), orderBy("id", "desc"));
+          const querySnapshot = await getDocs(q);
+          const dataList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setTodos(dataList);
+          if(dataList.length>0) setLatestTodoId(dataList[0].id);
+          console.log(dataList)
+        } 
+        catch (error) {
+          console.error("Error fetching data: ", error);
+        }
+      })();
     }
-  },[])
+    else{
+      const todos= JSON.parse(localStorage.getItem("todo"))
 
-  useEffect(/*async*/()=>{
-    
-    // await addDoc(collection(db, "todos"), todos);
-    user?(async ()=>{
-      if(todos.length)
-        addDoc(collection(db, user.email), todos[0]);
-    })(): localStorage.setItem("todo", JSON.stringify(todos));
-  },[todos])
+      if(todos && todos.length>0){
+        setTodos(todos)
+      }
+    }
+  },[user,isOnline])
+
+  useEffect(()=>{
+    if(user && isOnline ){
+      (async ()=>{
+        try {
+          const currTodo = todos[0];
+          const currTodoId = currTodo?.id;
+          
+          if(latestTodo.id && latestTodo.id !== latestTodoId){
+            await addDoc(collection(db, user.email), latestTodo);
+            latestTodo({});
+            console.log("Todo added successfully to Firestore.");
+          }
+          else{
+            console.log("No new todos to add to Firestore.");
+          }
+
+        } catch (error) {
+          console.error("Error saving todo to Firestore: ", error);
+        }
+      })();
+    }
+    else{ 
+      localStorage.setItem("todo", JSON.stringify(todos));
+    }
+  },[todos,isOnline,user,latestTodo])
 
   return (
     <TodoProvider value={{todos, addTodo, updateTodo, deleteTodo, toggleComplete}}>
