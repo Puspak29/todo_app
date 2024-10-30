@@ -39,6 +39,8 @@ function LoginCard() {
               .catch((error) => {
                 const errorCode = error.code;
                 const errorMessage = error.message;
+                console.log("error", { errorCode, errorMessage })
+                alert("Invalid Email or Password")
               });
           }}
         >SignIn</button>
@@ -57,6 +59,7 @@ function LoginCard() {
               .catch((error) => {
                 const errorCode = error.code;
                 const errorMessage = error.message;
+                console.log("error", { errorCode, errorMessage })
                 // ..
               });
           }}
