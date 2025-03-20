@@ -2,7 +2,7 @@
 
 :exclamation: **Note:** Currently working on some bugs.
 
-It is a Todo App using `context api`, `local storage` ans `firestore` , inspired by Chai Aur Code.
+It is a Todo App using `context api`, `local storage` and `firestore` , inspired by Chai Aur Code.
 
 > Website link [Todo App](https://puspak29.github.io/todo_app/)
 
