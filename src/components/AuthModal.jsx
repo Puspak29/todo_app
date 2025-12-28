@@ -1,6 +1,28 @@
 import { Lock, Mail, User, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const AuthModal = ({ isOpen, onClose, mode, setMode, onSubmit }) => {
+  const [details, setDetails] = useState({
+    fullName: '',
+    email: '',
+    password: ''
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(details);
+  }
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDetails({ fullName: '', email: '', password: '' });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    setDetails(prev => ({ ...prev, password: '' }));
+  }, [mode]);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -18,19 +40,31 @@ const AuthModal = ({ isOpen, onClose, mode, setMode, onSubmit }) => {
             <p className="text-slate-500 text-sm mt-1">Sync your workflow across devices</p>
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === 'signup' && (
+              <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
+                <label className="text-xs font-bold text-slate-500 uppercase px-1">Full Name</label>
+                <div className="relative">
+                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" placeholder="John Doe" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" required={mode === 'signup'} 
+                  value={details.fullName} onChange={e => setDetails({ ...details, fullName: e.target.value })} />
+                </div>
+              </div>
+            )}
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase px-1">Email Address</label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input type="email" placeholder="name@company.com" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" required />
+                <input type="email" placeholder="name@company.com" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" required
+                value={details.email} onChange={e => setDetails({ ...details, email: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase px-1">Password</label>
               <div className="relative">
                 <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input type="password" placeholder="••••••••" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" required />
+                <input type="password" placeholder="••••••••" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" required 
+                value={details.password} onChange={e => setDetails({ ...details, password: e.target.value })} />
               </div>
             </div>
             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-100 transition-all active:scale-[0.98] mt-2">

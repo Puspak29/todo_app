@@ -1,1 +1,0 @@
-export {authContext, AuthProvider, useAuth } from "./FirebaseAuthContext"

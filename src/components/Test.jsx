@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle, Search, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Search } from 'lucide-react';
 import AuthModal from './AuthModal';
 import TaskForm from './TaskForm';
 import TaskItem from './TaskItem';
 import GanttChart from './GaantChart';
 import { calculateDuration } from '../handler/formatter';
+import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import { firebaseAuth, db } from '../Firebase/FirebaseConfig';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, onAuthStateChanged } from 'firebase/auth';
 
 const DUMMY_TASKS = [
   { 
@@ -24,10 +27,8 @@ const DUMMY_TASKS = [
 ]
 
 const Test = () => {
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem('tasks');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [tasks, setTasks] = useState([]);
+  const [source, setSource] = useState(null);
   
   const [category, setCategory] = useState('Personal');
   const [filter, setFilter] = useState('all'); 
@@ -56,43 +57,168 @@ const Test = () => {
   }, [tasks]);
 
   useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
+    const hydrate = async () => {
+      if (!user) {
+        // Load from localStorage
+        const saved = localStorage.getItem('tasks');
+        setTasks(saved ? JSON.parse(saved) : []);
+        setSource('local');
+      } else {
+        // Load from Firestore
+        const snapshot = await getDocs(
+          collection(db, 'users', user.uid, 'tasks')
+        );
 
-  const addTask = (data) => {
-    setTasks([{ 
+        const firestoreTasks = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        setTasks(firestoreTasks);
+        setSource('firestore');
+      }
+    };
+
+    hydrate();
+  }, [user]);
+
+  useEffect(() => {
+    if (!source) return;
+
+    if (source === 'local') {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+  }, [tasks, source]);
+
+  const addTask = async (data) => {
+    const newTask = { 
       id: Date.now(), 
       ...data, 
       completed: false, 
       category, 
       createdAt: new Date().toISOString() 
-    }, ...tasks]);
+    };
+    setTasks([newTask, ...tasks]);
+
+    if (source === 'firestore') {
+      await setDoc(
+        doc(db, 'users', user.uid, 'tasks', String(newTask.id)),
+        newTask
+      );
+    }
   };
 
-  const toggleTask = (id) => setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-  
-  const toggleSubtask = (taskId, subId) => {
-    setTasks(tasks.map(t => {
-      if (t.id === taskId) {
-        const updatedSubtasks = t.subtasks.map(s => s.id === subId ? { ...s, completed: !s.completed } : s);
-        return { ...t, subtasks: updatedSubtasks };
+  const toggleTask = async (id) =>{ 
+    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+
+    if (source === 'firestore') {
+      const task = tasks.find(t => t.id === id);
+      if (task) {
+        await setDoc(
+          doc(db, 'users', user.uid, 'tasks', String(id)),
+          { ...task, completed: !task.completed },
+          { merge: true }
+        );
       }
-      return t;
-    }));
+    }
+  };
+  
+  const toggleSubtask = async (taskId, subId) => {
+    const task = tasks.find(t => t.id === taskId);
+    if(!task) return;
+
+    const updatedSubtasks = task.subtasks.map(s =>
+      s.id === subId ? { ...s, completed: !s.completed } : s
+    );
+
+    const updatedTask = { ...task, subtasks: updatedSubtasks };
+
+    setTasks(
+      tasks.map(t => t.id === taskId ? updatedTask : t)
+    );
+
+    if (source === 'firestore' && updatedTask) {
+      await setDoc(
+        doc(db, 'users', user.uid, 'tasks', String(taskId)),
+        updatedTask,
+        { merge: true }
+      );
+    }
   };
 
-  const deleteTask = (id) => setTasks(tasks.filter(t => t.id !== id));
+  const deleteTask = async (id) =>{ 
+    setTasks(tasks.filter(t => t.id !== id));
 
-  const updateTask = (updatedTask) => {
+    if (source === 'firestore') {
+      await deleteDoc(
+        doc(db, 'users', user.uid, 'tasks', String(id))
+      );
+    }
+  };
+
+  const updateTask = async (updatedTask) => {
     setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
     setEditingTask(null);
+
+    if (source === 'firestore') {
+      await setDoc(
+        doc(db, 'users', user.uid, 'tasks', String(updatedTask.id)),
+        updatedTask,
+        { merge: true }
+      );
+    }
+
   };
 
-  const handleAuthSubmit = (e) => {
-    e.preventDefault();
-    setUser({ email: 'user@example.com', name: 'John Doe' });
-    setShowAuthModal(false);
-  };
+  const handleAuthSubmit = async (details) => {
+    const { email, password, fullName } = details;
+
+    try{
+      let userCredential;
+
+      if(authMode === 'login'){
+        userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      }
+      else if(authMode === 'signup'){
+        userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        await updateProfile(userCredential.user, {
+          displayName: fullName
+        });
+      }
+
+      setUser({
+        uid: userCredential.user.uid,
+        name: userCredential.user.displayName || fullName || 'User',
+        email: userCredential.user.email
+      })
+      setShowAuthModal(false);
+    }
+    catch(error){
+      console.error('Auth error:', error);
+    }
+  }
+
+  const handleLogout = async () => {
+    await signOut(firebaseAuth);
+    setUser(null);
+  }
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (currentUser)=>{
+      if(currentUser){
+        setUser({
+          uid: currentUser.uid,
+          name: currentUser.displayName || 'User',
+          email: currentUser.email
+        });
+      }
+      else{
+        setUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-4 sm:p-6 lg:p-10">
@@ -140,7 +266,7 @@ const Test = () => {
                 <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
                   <div className="text-right hidden sm:block">
                     <p className="text-sm font-bold text-slate-800">{user.name}</p>
-                    <button onClick={() => setUser(null)} className="text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-600">Logout</button>
+                    <button onClick={handleLogout} className="text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-600">Logout</button>
                   </div>
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-black border-2 border-white shadow-sm">
                     {user.name.charAt(0)}
