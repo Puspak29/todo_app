@@ -1,18 +1,26 @@
-# Todo App
+# TaskFlow
 
-:exclamation: **Note:** Currently working on some bugs.
+**TaskFlow** is a modern, intuitive task management web application designed to help you plan, organize and track your tasks efficiently. With features like subtasks, real-time updates, and visualizations, TaskFlow makes managing your daily workflow simple and enjoyable.
 
-It is a Todo App using `context api`, `local storage` and `firestore` , inspired by Chai Aur Code.
+---
 
-> Website link [Todo App](https://puspak29.github.io/todo_app/)
+> Website link [TaskFlow](https://taskflow-eight-brown.vercel.app/)
 
-All the below mentioned features can be performed either on `local storage` or on `firestore`(if logged in).
-Can log in (if already signed in before) else sign in to create account.
+---
 
-Features:
+## Features
+- **Task Management**: Create, edit and delete tasks with ease.
+- **Subtasks**: Break down larger tasks into manageable subtasks.
+- **Filtering and Search**: Easily filter tasks by status and search.
+- **Gantt Chart Visualization**: Visualize your tasks and their timelines with an interactive Gantt chart.
+- **Task Statistics**: Track completion rates, pending tasks, and planned workload.
+- **User Authentication**: Secure login and registration system using Firebase.
+- **Guest Mode**: Explore the app without creating an account.
+- **Responsive Design**: Optimized for both desktop and mobile devices.
 
-- Add Todo
-- Delete Todo
-- Edit Todo
-- Save the edited Todo
-- Mark Todo as completed
+---
+
+## Technologies Used
+- **Frontend**: React, Tailwind CSS, Lucide Icons
+- **Backend**: Firebase Firestore, Firebase Authentication
+- **Deployment**: Vercel
