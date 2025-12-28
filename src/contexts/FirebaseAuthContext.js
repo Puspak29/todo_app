@@ -1,6 +1,4 @@
-import React, { useContext, useState, useEffect, createContext } from "react"
-import { firebaseAuth } from "../Firebase/FirebaseConfig"; 
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged} from "firebase/auth"
+import { useContext, createContext } from "react"
 
 export const authContext = createContext({
     user : null,
@@ -14,4 +12,3 @@ export const useAuth = ()=>{
 };
 
 export const AuthProvider=authContext.Provider
-
